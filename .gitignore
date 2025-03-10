@@ -1,0 +1,6 @@
+*.zip
+libtorch
+test_torch
+*.so
+main
+venv
