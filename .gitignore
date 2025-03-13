@@ -2,5 +2,6 @@
 libtorch
 test_torch
 *.so
+*.o
 main
 venv

@@ -1,8 +1,23 @@
-all: libtest_sum.so
-	GOARCH=arm64 go build main.go
+#LIBTORCH := /usr/local/libtorch
 
-libtest_sum.so: test_sum.cpp
-	clang++ -std=c++17 -L../libtorch/lib -I../libtorch/include/ -I../libtorch/include/torch/csrc/api/include/ -O3 -arch arm64 -fPIC -shared -o libtest_sum.so test_sum.cpp -ltorch -lc10 -ltorch_cpu
+ifeq ($(LIBTORCH),)
+	LIBTORCH := $(abspath ../py/venv/lib/python3.12/site-packages/torch)
+	# PyTorch libs are compiled with the old ABI
+	ABI:=-D_GLIBCXX_USE_CXX11_ABI=0
+else
+	ABI:=
+endif
+
+CFLAGS=-I$(LIBTORCH)/include/ -I$(LIBTORCH)/include/torch/csrc/api/include/ -O3
+CPPFLAGS=-std=c++17 $(CFLAGS) $(ABI) -fPIC
+LDFLAGS=-L$(LIBTORCH)/lib -ltorch -pthread -ltorch_cpu -lc10 -Wl,-rpath $(LIBTORCH)/lib
+
+main: libtest_sum.so
+	GO_CFLAGS="$(CFLAGS)" go build main.go
+	@echo set LD_LIBRARY_PATH=$(LIBTORCH)/lib:$${LD_LIBRARY_PATH}:$(abspath .)
+
+libtest_sum.so: test_sum.o
+	$(CXX) $(CPPFLAGS) -std=c++17 -O3 -shared -o $(@) $(^) $(LDFLAGS)
 
 clean:
 	rm -f main libtest_sum.so test_sum.o

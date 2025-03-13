@@ -2,7 +2,8 @@ package main
 
 /*
 #include "test_sum.h"
-#cgo LDFLAGS: -L. -L../libtorch/lib -ltest_sum -Wl,-rpath ../libtorch/lib
+#cgo CFLAGS: -D_GLIBCXX_USE_CXX11_ABI=0
+#cgo LDFLAGS: -L. -ltest_sum 
 */
 import "C"
 
