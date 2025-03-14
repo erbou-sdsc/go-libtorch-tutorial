@@ -4,8 +4,6 @@
 int main() {
     torch::Device device(torch::kCPU);
 
-    if (false) {
-    /*
     if (torch::mps::is_available()) {
         torch::Device device(torch::kMPS);
 	if (!device.is_mps()) {
@@ -13,7 +11,6 @@ int main() {
 	} else {
             std::cout << "MPS is available on this device!" << std::endl;
 	}
-    */
     } else if (torch::cuda::is_available()) {
 	torch::Device device(torch::kCUDA);
 	if (!device.is_cuda()) {
