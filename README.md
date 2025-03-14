@@ -111,7 +111,7 @@ to include the path to the libtorch lib folder.
 
 As before, you have too options.
 
-#### CMake
+#### CMake (CUDA only)
 
 Set _CMAKE_PREFIX_PATH_ in _go/CMakeLists.txt_ to the home folder of the libtorch library as needed.
 

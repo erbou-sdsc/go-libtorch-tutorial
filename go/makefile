@@ -1,7 +1,7 @@
 #LIBTORCH := /usr/local/libtorch
 
 ifeq ($(LIBTORCH),)
-	LIBTORCH := $(abspath ../py/venv/lib/python3.12/site-packages/torch)
+	LIBTORCH := $(abspath $(wildcard ../py/venv/lib/python3*/site-packages/torch))
 	# PyTorch libs are compiled with the old ABI
 	ABI:=-D_GLIBCXX_USE_CXX11_ABI=0
 else
