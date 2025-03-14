@@ -72,7 +72,7 @@ This is to ensures that the code is compiled using the same ABI as the PyTorch l
 
 ### Verify the c++ compilation environment
 
-Before attempting the Go/C++ binding make sure that you are at least able to compile this simple C++ example.
+Before attempting the Go/C++ binding make sure that you are at least able to run this simple C++ example.
 
 You have two options:
 
@@ -80,7 +80,7 @@ You have two options:
 
 If you have _cmake_ installed, you can build the sample app as follows.
 
-Set _CMAKE_PREFIX_PATH_ in _CMakeLists.txt_ to the home of the libtorch library.
+Set _CMAKE_PREFIX_PATH_ in _c++/CMakeLists.txt_ to the home of the libtorch library as needed.
 
 ```
 cd c++
@@ -113,7 +113,7 @@ As before, you have too options.
 
 #### CMake
 
-Set _CMAKE_PREFIX_PATH_ in _CMakeLists.txt_ to the home folder of the libtorch library as appropriate.
+Set _CMAKE_PREFIX_PATH_ in _go/CMakeLists.txt_ to the home folder of the libtorch library as needed.
 
 ```
 cd go
