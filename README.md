@@ -1,43 +1,140 @@
-### Simple C++ Torch tutorial with Go binding
+## Simple C++ Torch tutorial with Go binding
 
-#### Pre-requisites
-
-This has been tested on MacOS arm64 (MPS) Sequoia, with command line xcode installed (make, clang* etc).
-
-You must first extract the **LibTorch** C++ zip from https://pytorch.org/ in this folder.
+### Pre-requisites
 
 #### Verify your hardware configuration
 
-The code in this tutorial is configured to use an MPS device on MacOS arm64 architectures.
-You can verify that you have MPS by executing the following code (this will create a venv with pytorch).
+This tutorial is configured to use an MPS device on MacOS arm64 or CUDA on Linux amd64.
+To verify that your system has a supported device, you can execute the following steps.
+This process will create a virtual environment with PyTorch and the older C++ ABI in _py/venv_,
+and it will verify your hardware configuration and confirm that the appropriate device (either MPS or CUDA) is available.
 
 ```
 cd py
-. ./test_mps.sh
+. ./test_device.sh
 ```
 
-#### Verify the c++ compilation environment
+##### MacOS MPS
 
-Before attempting the Go/C++ binding make sure that you are at least able to compile this simple C++ example.
+The MacOS code has been tested on MacOS arm64 (MPS) Sequoia, with command line xcode installed including make, clang v16.0.0.
+
+##### Linux CUDA
+
+This has been tested on Linux Ubuntu 24.04 with CUDA 12.2 and Nvidia A100.
+
+You need _g++-12, build-essential,_ and _libxml2_. Note that CUDA Toolkit 12.2 will not work with a higher verison of g++ if using cmake.
+
+Verify your CUDA driver and CUDA Toolkit version (_sudo apt install pciutils_ if you don't have _lspci_):
 
 ```
-cd ./c++
+lspci | grep -i nvidia
+nvidia-smi
+nvcc --version
+```
+
+If _nvcc_ is not found, install the version of cuda tooklkit from [nvidia developer](https://developer.nvidia.com/cuda-downloads/).
+
+#### LibTorch++
+
+LibTorch is required in order to compile a C++ application.
+
+Two options are possible:
+
+##### Libtorch++
+
+Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a folder, e.g. _/usr/local/libtorch_.
+
+If you intend to use _make_ you should also _export LIBTORCH=/usr/local/libtorch_.
+
+##### PyTorch's libraries
+
+If you have already executed the _test_device.sh_ script, _libtorch_ will be installed
+in the Python environment located at _py/venv_.
+
+If you haven't run the script yet,  create the Python virtual environment and install PyTorch inside the virtual environment using pip:
+
+```
+python -m venv venv
+. venv/bin/activate
+pip install torch
+```
+
+If you intend to use _make_, you should also set the _LIBTORCH_ environment variable to the libtorch folder inside PyTorch:
+
+```
+    export LIBTORCH=$(python -c "import torch; print(torch.__path__[0])")/lib/python3.12/site-packages/torch
+```
+
+Note on C++ ABI Compatibility:
+The version of PyTorch may have been compiled with the older C++ ABI, in which case you will get undefined symbols with
+_cxx11_ during the compilation. If that happens, you must explicitly add the _-D_GLIBCXX_USE_CXX11_ABI=0_ flag to _CCFLAGS_ when building with make.
+This is to ensures that the code is compiled using the same ABI as the PyTorch libraries.
+
+### Verify the c++ compilation environment
+
+Before attempting the Go/C++ binding make sure that you are at least able to run this simple C++ example.
+
+You have two options:
+
+#### CMake
+
+If you have _cmake_ installed, you can build the sample app as follows.
+
+Set _CMAKE_PREFIX_PATH_ in _c++/CMakeLists.txt_ to the home of the libtorch library as needed.
+
+```
+cd c++
+mkdir -p build
+cd build
+cmake ..
+make
+./test_torch
+```
+
+#### Make
+
+CMake is excellent for portable builds, but troubleshooting can be difficult when issues arise.
+To make things easier, we provide a simplified makefile that is easier to debug and adapt to your specific environments.
+
+Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+
+```
+cd c++
 make test_torch
 ./test_torch
 ```
 
-The LDFLAGS of makefile should work on MacOS arm64 sequoia with xcode command line tools installed. The same computer should be used for building and testing the executable.
-Otherwise, on Linux and MacOs, you'll need to set _LD_LIBRARY_PATH_ or _DYLD_LIBRARY_PATH_ on MacOS to include the path to the libtorch lib folder or make the content of this folder libraries globally available (or modify -rpath in the makefile). On Windows you are on your own.
+In both options, if the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS)
+to include the path to the libtorch lib folder.
 
-#### Test the Go/C++ binding
+### Test the Go/C++ binding
+
+As before, you have too options.
+
+#### CMake (CUDA only)
+
+Set _CMAKE_PREFIX_PATH_ in _go/CMakeLists.txt_ to the home folder of the libtorch library as needed.
 
 ```
-cd ./go
+cd go
+mkdir -p build
+cd build
+cmake ..
 make
-export DYLD_LIBRARY_PATH=${PWD}:${PWD}/../libtorch/lib:${DYLD_LIBRARY_PATH} # See comment below
-./main
+cd ..
+LD_LIBRARY_PATH=. ./main
 ```
 
-The makefile is configured to compile on MacOS Sequoia, arm64 (GOARCH=arm64).
+#### Make
 
-Same comment for C++ above: the same computer must be used for compiling and building the executable. Furthermore the main will work only if executed from within its directory  (i.e. `./main`). Otherwise, you need to export the _LD_LIBRARY_PATH_ or _DYLD_LIBRARY_PATH_ environment variable to include both the libtest_sum.so folder _and_ the libtorch lib folder as demonstrated in the example.
+Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+
+```
+cd go
+make
+LD_LIBRARY_PATH=. ./main
+```
+
+In both options, if the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS)
+to include the paths to the missing libraries.
+
