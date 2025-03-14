@@ -1,7 +1,7 @@
 #include <torch/torch.h>
 #include <iostream>
 #include <exception>
-#include "test_sum.h"
+#include "test_torch.h"
 
 float _test_sum(int num, const float* array) {
     try {

@@ -47,7 +47,7 @@ Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a fold
 ##### PyTorch's libraries
 
 If you have already executed the _test_device.sh_ script, _libtorch_ will be installed
-in the Python environment located at _./py/venv_.
+in the Python environment located at _py/venv_.
 
 If you haven't run the script yet,  create the Python virtual environment and install PyTorch inside the virtual environment using pip:
 
@@ -72,11 +72,13 @@ This is to ensures that the code is compiled using the same ABI as the PyTorch l
 
 Before attempting the Go/C++ binding make sure that you are at least able to compile this simple C++ example.
 
-You have too options.
+You have too options:
 
 #### CMake
 
-If you have _cmake_ installed, you can build the sample app as follow:
+If you have _cmake_ installed, you can build the sample app as follows.
+
+Set _CMAKE_PREFIX_PATH_ in _CMakeLists.txt_ to the home of the libtorch library.
 
 ```
 cd c++
@@ -84,6 +86,7 @@ mkdir -p build
 cd build
 cmake ..
 make
+./test_torch
 ```
 
 #### Make
@@ -91,23 +94,45 @@ make
 CMake is excellent for portable builds, but troubleshooting can be difficult when issues arise.
 To make things easier, we provide a simplified makefile that is easier to debug and adapt to your specific environments.
 
+Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+
 ```
-cd ./c++
+cd c++
 make test_torch
 ./test_torch
 ```
 
-If the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS) to include the path to the libtorch lib folder.
-On Windows you are on your own.
+In both options, if the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS)
+to include the path to the libtorch lib folder.
 
 ### Test the Go/C++ binding
 
+As before, you have too options.
+
+#### CMake
+
+Set _CMAKE_PREFIX_PATH_ in _CMakeLists.txt_ to the home folder of the libtorch library as appropriate.
+
 ```
-cd ./go
+cd go
+mkdir -p build
+cd build
+cmake ..
 make
-./main
+cd ..
+LD_LIBRARY_PATH=. ./main
 ```
 
-Same comment for C++ above. If it cannot find a library you must to export the _LD_LIBRARY_PATH_ or _DYLD_LIBRARY_PATH_ environment
-variable to include both the libtest_sum.so folder _and_ the libtorch lib folder.
+#### Make
+
+Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+
+```
+cd go
+make
+LD_LIBRARY_PATH=. ./main
+```
+
+In both options, if the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS)
+to include the paths to the missing libraries.
 

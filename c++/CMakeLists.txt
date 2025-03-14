@@ -4,8 +4,6 @@ project(MyLibTorchApp)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(NVCC_APPEND_FLAGS "${NVCC_APPEND_FLAGS} -allow-unsupported-compile")
-
 set(CMAKE_PREFIX_PATH "/usr/local/libtorch")
 
 find_package(Torch REQUIRED)

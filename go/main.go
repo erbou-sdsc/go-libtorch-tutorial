@@ -1,9 +1,9 @@
 package main
 
 /*
-#include "test_sum.h"
+#include "test_torch.h"
 #cgo CFLAGS: -D_GLIBCXX_USE_CXX11_ABI=0
-#cgo LDFLAGS: -L. -ltest_sum 
+#cgo LDFLAGS: -L. -ltest_torch 
 */
 import "C"
 
