@@ -5,3 +5,4 @@ test_torch
 *.o
 main
 venv
+build
