@@ -8,12 +8,12 @@ The MacOS code has been tested on MacOS arm64 (MPS) Sequoia, with command line x
 
 ##### Link against libtorch++
 
-Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a folder and export LIBTORCH to libtorch inside that folder.
+Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a folder and _export LIBTORCH={folder}/libtorch_.
 
-* Link against pytorch's libraries
+##### Link against pytorch's libraries
 
-* Execute the `./test_device.sh` command, or run `pip install torch` and export LIBTORCH to lib/python3.12/site-packages/torch inside your python environment.
-  Note that the pytorch libraries have been compiled with the older C++ ABI, and you will need to compile with _-D_GLIBCXX_USE_CXX11_ABI=0_.
+Execute the `./test_device.sh` command, or run `pip install torch` and export LIBTORCH to lib/python3.12/site-packages/torch inside your python environment.
+Note that the pytorch libraries have been compiled with the older C++ ABI, and you will need to compile with _-D_GLIBCXX_USE_CXX11_ABI=0_.
 
 ##### Linux CUDA
 
@@ -59,11 +59,10 @@ to include the path to the libtorch lib folder or make the content of this folde
 ```
 cd ./go
 make
-export DYLD_LIBRARY_PATH=${PWD}:${PWD}/../libtorch/lib:${DYLD_LIBRARY_PATH} # See comment below
 ./main
 ```
 
 The makefile is configured to compile on MacOS Sequoia, arm64 (GOARCH=arm64).
 
 Same comment for C++ above. If it cannot find a library you must to export the _LD_LIBRARY_PATH_ or _DYLD_LIBRARY_PATH_ environment
-variable to include both the libtest_sum.so folder _and_ the libtorch lib folder as demonstrated in the example.
+variable to include both the libtest_sum.so folder _and_ the libtorch lib folder.
