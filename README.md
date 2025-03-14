@@ -42,7 +42,9 @@ Two options are possible:
 
 ##### Libtorch++
 
-Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a folder and _export LIBTORCH={folder}/libtorch_.
+Extract the appropriate **LibTorch** C++ zip from https://pytorch.org/ to a folder, e.g. _/usr/local/libtorch_.
+
+If you intend to use _make_ you should also _export LIBTORCH=/usr/local/libtorch_.
 
 ##### PyTorch's libraries
 
@@ -57,22 +59,22 @@ python -m venv venv
 pip install torch
 ```
 
-Set the _LIBTORCH_ environment variable to the libtorch location inside the PyTorch package's location:
+If you intend to use _make_, you should also set the _LIBTORCH_ environment variable to the libtorch folder inside PyTorch:
 
 ```
     export LIBTORCH=$(python -c "import torch; print(torch.__path__[0])")/lib/python3.12/site-packages/torch
 ```
 
 Note on C++ ABI Compatibility:
-The version of PyTorch may have been compiled with the older C++ ABI, which case you will get undefined symbols with
-_cxx11_ during the compilation. In that case you must explicitly add the _-D_GLIBCXX_USE_CXX11_ABI=0_ flag to _CCFLAGS_ when building with make.
+The version of PyTorch may have been compiled with the older C++ ABI, in which case you will get undefined symbols with
+_cxx11_ during the compilation. If that happens, you must explicitly add the _-D_GLIBCXX_USE_CXX11_ABI=0_ flag to _CCFLAGS_ when building with make.
 This is to ensures that the code is compiled using the same ABI as the PyTorch libraries.
 
 ### Verify the c++ compilation environment
 
 Before attempting the Go/C++ binding make sure that you are at least able to compile this simple C++ example.
 
-You have too options:
+You have two options:
 
 #### CMake
 
