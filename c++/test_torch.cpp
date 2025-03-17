@@ -23,20 +23,23 @@ int main() {
     }
 
 
-    // Create a tensor
-    at::Tensor tensor = torch::rand({3, 3}, device);  // 3x3 tensor with random values
+    // Create a 6x6 tensor
+    at::Tensor tensor = torch::rand({6, 6}, device);
     std::cout << "Original Tensor:" << std::endl;
     std::cout << tensor << std::endl;
 
     // Perform the sum operation
     at::Tensor sum = tensor.sum();  // Summing all the elements
     std::cout << "Sum of all elements:" << std::endl;
-    std::cout << sum.item<float>() << std::endl;  // Convert the sum to a float for display
+    std::cout << sum.item<float>() << std::endl;
 
-    // Optionally, sum along a particular dimension (e.g., sum each column)
-    at::Tensor sum_dim0 = tensor.sum(0);  // Sum along the 0th dimension (rows)
-    std::cout << "Sum along rows (dim 0):" << std::endl;
-    std::cout << sum_dim0 << std::endl;
+    // Sum along a particular dimension (e.g., sum each column),
+    // Tells us about row / column ordering.
+    std::cout << "Sum along rows:" << std::endl;
+    at::Tensor sum_dim0 = tensor.sum(0);
+    std::cout << "sum along cols (dim 0):\n" << sum_dim0 << std::endl;
+    std::cout << "sum along rows (dim 1):\n" << tensor.sum(1) << std::endl;
+    std::cout << "sum along rows + cols:\n" << tensor.sum(1).sum(0) << std::endl;
 
     return 0;
 }
