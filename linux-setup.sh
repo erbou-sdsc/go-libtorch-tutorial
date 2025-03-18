@@ -31,7 +31,7 @@ _install() {
     if ! command -v g++ || ! command -v wget || ! command -v unzip || ! command -v cmake; then
         export DEBIAN_FRONTEND=noninteractive
         apt update
-        apt install -y wget g++-12 build-essential git libxml2 unzip vim tmux cmake python3.12
+        apt install -y wget g++-12 build-essential git libxml2 unzip vim tmux cmake python3.12 python3.12-venv
         apt -y autoremove
         for i in /bin/gcc*-12 /bin/g++*-12; do ln -fs $i ${i/-12/}; done
         ln -fs /bin/gcc /bin/cc
