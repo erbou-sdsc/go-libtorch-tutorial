@@ -33,6 +33,7 @@ _install() {
         apt update
         apt install -y wget g++-12 build-essential git libxml2 unzip vim tmux cmake python3.12 python3.12-venv
         apt -y autoremove
+        apt -y clean
         for i in /bin/gcc*-12 /bin/g++*-12; do ln -fs $i ${i/-12/}; done
         ln -fs /bin/gcc /bin/cc
         ln -fs /bin/g++ /bin/c++

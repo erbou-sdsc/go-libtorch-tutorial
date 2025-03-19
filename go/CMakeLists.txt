@@ -5,13 +5,23 @@ project(MyGoCppLibTorchApp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_PREFIX_PATH "/usr/local/libtorch")
+file(GLOB PYTHON_TORCH_PATHS "${CMAKE_CURRENT_LIST_DIR}/../py/venv/lib/python3*/site-packages/torch/")
+list(JOIN PYTHON_TORCH_PATHS ";" CMAKE_PREFIX_PATH)
+set(CMAKE_PREFIX_PATH "/usr/local/libtorch;${PYTHON_TORCH_PATHS}")
 
 find_package(Torch REQUIRED)
 
-link_directories(${LIBTORCH_PATH}/lib)
-link_directories(${CUDA_TOOLKIT_ROOT_DIR}/lib64)
+find_package(CUDA QUIET)
 
+if(CUDA_FOUND)
+    link_directories(${CUDA_TOOLKIT_ROOT_DIR}/lib64)
+    set(CUDA_LIBRARIES cuda cudart ${CUDA_LIBRARIES})
+else()
+    message(STATUS "CUDA not found, skipping CUDA")
+    set(CUDA_LIBRARIES "")
+endif()
+
+link_directories(${LIBTORCH_PATH}/lib)
 add_library(test_torch SHARED test_torch.cpp)
 
 set_target_properties(test_torch PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -19,8 +29,6 @@ set_target_properties(test_torch PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CUR
 target_link_libraries(test_torch
     torch
     c10
-    cudart
-    cuda
     ${CUDA_LIBRARIES}
     pthread
 )

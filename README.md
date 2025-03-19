@@ -80,7 +80,7 @@ You have two options:
 
 If you have _cmake_ installed, you can build the sample app as follows.
 
-Set _CMAKE_PREFIX_PATH_ in _c++/CMakeLists.txt_ to the home of the libtorch library as needed.
+Set _CMAKE_PREFIX_PATH_ in _c++/CMakeLists.txt_ to the home folder of the libtorch library if needed, then:
 
 ```
 cd c++
@@ -96,7 +96,7 @@ make
 CMake is excellent for portable builds, but troubleshooting can be difficult when issues arise.
 To make things easier, we provide a simplified makefile that is easier to debug and adapt to your specific environments.
 
-Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+Set _LIBTORCH_ to the home folder of the libtorch library as needed, then:
 
 ```
 cd c++
@@ -111,9 +111,9 @@ to include the path to the libtorch lib folder.
 
 As before, you have too options.
 
-#### CMake (CUDA only)
+#### CMake
 
-Set _CMAKE_PREFIX_PATH_ in _go/CMakeLists.txt_ to the home folder of the libtorch library as needed.
+Set _CMAKE_PREFIX_PATH_ in _go/CMakeLists.txt_ to the home folder of the libtorch library if needed, then:
 
 ```
 cd go
@@ -127,7 +127,7 @@ LD_LIBRARY_PATH=. ./main
 
 #### Make
 
-Set _LIBTORCH_ to the home folder of the libtorch library as indicated before.
+Set _LIBTORCH_ to the home folder of the libtorch library as needed, then:
 
 ```
 cd go
@@ -137,4 +137,32 @@ LD_LIBRARY_PATH=. ./main
 
 In both options, if the executable fails due to a missing library, set _LD_LIBRARY_PATH_ (Linux) or _DYLD_LIBRARY_PATH_ (MacOS)
 to include the paths to the missing libraries.
+
+### Test the C++ CNN
+
+The example in the _cnn_ folder test the availability of the CNN deep learning libraries on the MNIST data set.
+
+#### CMake
+
+Set _CMAKE_PREFIX_PATH_ in _cnn/CMakeLists.txt_ to the home folder of the libtorch library as needed, then:
+
+```
+cd cnn
+./fetch_data.sh
+cd build
+ln -s ../data .
+cmake ..
+make
+./test_cnn
+```
+
+#### Make
+
+Set _LIBTORCH_ to the home folder of the libtorch library as needed, then:
+
+```
+cd cnn
+make
+./test_cnn
+```
 

@@ -9,4 +9,4 @@ venv
 build
 .nfs*
 pkgs
-data
+*-ubyte
