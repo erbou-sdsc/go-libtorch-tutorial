@@ -1,6 +1,7 @@
 *.zip
 libtorch
 test_torch
+test_cnn
 *.so
 *.o
 main
@@ -8,3 +9,4 @@ venv
 build
 .nfs*
 pkgs
+data

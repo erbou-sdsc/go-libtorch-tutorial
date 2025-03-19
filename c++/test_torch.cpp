@@ -3,25 +3,23 @@
 
 int main() {
     torch::Device device(torch::kCPU);
-
     if (torch::mps::is_available()) {
-        torch::Device device(torch::kMPS);
+        device = torch::Device(torch::kMPS);
 	if (!device.is_mps()) {
             std::cout << "MPS is not available on this device!" << std::endl;
 	} else {
             std::cout << "MPS is available on this device!" << std::endl;
 	}
     } else if (torch::cuda::is_available()) {
-	torch::Device device(torch::kCUDA);
+	device = torch::Device(torch::kCUDA);
 	if (!device.is_cuda()) {
             std::cout << "CUDA is not available on this device!" << std::endl;
 	} else {
             std::cout << "CUDA is available on this device!" << std::endl;
 	}
     } else {
-            std::cout << "Using CPU" << std::endl;
+        std::cout << "Using CPU" << std::endl;
     }
-
 
     // Create a 6x6 tensor
     at::Tensor tensor = torch::rand({6, 6}, device);

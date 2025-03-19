@@ -6,23 +6,24 @@
 float _test_sum(int num, const float* array) {
     try {
         torch::Device device(torch::kCPU);
-    
-        if (torch::cuda::is_available()) {
-            std::cout << "CUDA is available on this device!" << std::endl;
+        if (torch::mps::is_available()) {
+            device = torch::Device(torch::kMPS);
+	    if (!device.is_mps()) {
+                std::cout << "MPS is not available on this device!" << std::endl;
+	    } else {
+                std::cout << "MPS is available on this device!" << std::endl;
+	    }
+        } else if (torch::cuda::is_available()) {
 	    device = torch::Device(torch::kCUDA);
-	    if (! device.is_cuda()) {
-                std::cerr << "Failed to get the CUDA device" << std::endl;
+	    if (!device.is_cuda()) {
+                std::cout << "CUDA is not available on this device!" << std::endl;
+	    } else {
+                std::cout << "CUDA is available on this device!" << std::endl;
 	    }
-        } else if (torch::mps::is_available()) {
-            std::cout << "MPS is available on this device!" << std::endl;
-	    device = torch::Device(torch::kMPS);
-	    if (! device.is_mps()) {
-                std::cerr << "Failed to get the MPS device" << std::endl;
-	    }
-	} else {
-	    std::cout << "Fallback to CPU" << std::endl;
-	}
-    
+        } else {
+            std::cout << "Using CPU" << std::endl;
+        }
+
         torch::Tensor tensor = torch::from_blob(const_cast<float*>(array), {num}, torch::kFloat).to(device);
         torch::Tensor sum = tensor.sum();
 
