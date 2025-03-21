@@ -190,8 +190,39 @@ make
 
 ### Test the Go-C++ binding for CNN
 
-This example demonstrates the same CNN model, with a Golang binding. The Go code includes a request aggregator that leverages goroutines and channels to perform batched inferences.
+This example demonstrates the same CNN model in a system that leverages a Go-C++ integration to maximize GPU utilization by preventing GPU starvation. Multiple goroutines request inferences on a go channel, which are aggregated by the Inference Aggregator goroutine. Once a batch is ready, it is passed to the C++ API, which offloads the computation to the GPU for fast processing. The results are then desaggregated and sent back to the respective goroutines via callback channels. The following diagram illustrates the sequence of operations in the system:
 
+```mermaid
+sequenceDiagram
+    participant T1 as Goroutine 1<br/>Inference Requester
+    participant T2 as Goroutine n<br/>Inference Requester
+    participant A as Goroutine<br/>Inference<br/>Aggregator
+    participant C as C++ API
+    participant G as GPU
+    autonumber
+    par
+      T1->>A: Send inference request (x_1, callback_1)
+    and
+      T2->>A: Send inference request (x_2, callback_2)
+    end
+    loop Aggregate
+        A->>A: Batch (x_i) from goroutines into<br/>flat float array until batch size<br/>is reached or timeout occurs<br/>waiting for more x_i
+    end
+    A->>C: Call inference(batch)
+    activate C
+    C->>G: Convert batch to tensor on GPU and<br/>execute inference
+    activate G
+    Note right of G: GPU runs inference<br/>independently of tensor size<br/> within a fixed time
+    G-->>C: Return tensor of results
+    deactivate G
+    C-->>A: Return flat batch of results
+    deactivate C
+    loop Desaggregate
+        A->>A: Split batch into individual results<br/>r_i and send to respective<br/>callback channels
+    end
+    A-->>T1: callback_1(r_1)
+    A-->>T2: callback_2(r_n)
+```
 
 ##### CMake
 
@@ -214,7 +245,9 @@ make
 
 ### TODO
 
-Several improvements can be made to the Go-C++ CNN integration. Currently, the code is hardcoded for a specific convolutional neural network model tailored for MNIST data.
-Ideally, it should implement a C++ model factory with a dlloader to enable the dynamic instantiation of models by name, with the possibility of including optional configuration parameters.
+Several improvements can be made to the Go-C++ integration.
 
+* Currently, the code is hardcoded for a specific convolutional neural network model tailored for MNIST data.
+Ideally, it should implement a C++ model factory with a dlloader to enable the dynamic instantiation of models by name, with the possibility of including optional configuration parameters.
+* While some effort has been made to support tensors of various shapes, the current C++ interface is designed to support a limited set of model architectures, and may not be well-suited for more complex models like GraphNet.
 
