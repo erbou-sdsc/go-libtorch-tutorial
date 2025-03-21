@@ -188,3 +188,33 @@ make
 ./test_cnn
 ```
 
+### Test the Go-C++ binding for CNN
+
+This example demonstrates the same CNN model, with a Golang binding. The Go code includes a request aggregator that leverages goroutines and channels to perform batched inferences.
+
+
+##### CMake
+
+```
+cd go-cnn
+cd build
+cmake ..
+make
+cd ..
+./test_cnn
+```
+
+##### Make
+
+```
+cd go-cnn
+make
+./test_cnn
+```
+
+### TODO
+
+Several improvements can be made to the Go-C++ CNN integration. Currently, the code is hardcoded for a specific convolutional neural network model tailored for MNIST data.
+Ideally, it should implement a C++ model factory with a dlloader to enable the dynamic instantiation of models by name, with the possibility of including optional configuration parameters.
+
+

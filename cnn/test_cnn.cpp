@@ -44,6 +44,8 @@ int main() {
         std::cout << "Using CPU" << std::endl;
     }
 
+    int batch_size{64};
+
     // Load the MNIST dataset, it must be saved into data
     // train-images-idx3-ubyte  train-labels-idx1-ubyte
     auto train_dataset = torch::data::datasets::MNIST("./data")
@@ -53,8 +55,9 @@ int main() {
                             .map(torch::data::transforms::Normalize<>(0.5, 0.5))
                             .map(torch::data::transforms::Stack<>());
 
-    auto train_loader = torch::data::make_data_loader(train_dataset, torch::data::DataLoaderOptions().batch_size(64).workers(4));
-    auto test_loader = torch::data::make_data_loader(test_dataset, torch::data::DataLoaderOptions().batch_size(64).workers(4));
+    auto train_loader = torch::data::make_data_loader(train_dataset, torch::data::DataLoaderOptions().batch_size(batch_size).workers(4));
+    auto test_loader = torch::data::make_data_loader(test_dataset, torch::data::DataLoaderOptions().batch_size(batch_size).workers(4));
+    auto progress_batch = int(train_dataset.size().value() / 5.0 / batch_size + 1 - 1.0/train_dataset.size().value());
 
     CNN model;
     model.to(device);
@@ -78,8 +81,8 @@ int main() {
 
             optimizer.step();
 
-            if (++batch_idx % 100 == 0) {
-                std::cout << "Train Epoch: " << epoch << " [" << batch_idx * 64 << "/" << train_dataset.size().value()
+            if (++batch_idx % progress_batch == 0) {
+                std::cout << "Train Epoch: " << epoch << " [" << batch_idx * batch_size << "/" << train_dataset.size().value()
                           << "]\tLoss: " << loss.item<float>() << std::endl;
             }
         }
