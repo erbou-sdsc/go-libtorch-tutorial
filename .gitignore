@@ -3,6 +3,7 @@ libtorch
 test_torch
 test_cnn
 *.so
+*.dylib
 *.o
 main
 venv

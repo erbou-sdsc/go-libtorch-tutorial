@@ -1,24 +1,45 @@
 package main
 
+//! See conditions for noescape and nocallback optimization
+
 /*
 #cgo LDFLAGS: -L. -ltest_cnn
+#include <stdlib.h>
 #include "test_cnn.h"
+#cgo noescape torch_training
+#cgo noescape torch_inference
+#cgo noescape torch_model_output_size
+#cgo noescape torch_model_input_size
+#cgo nocallback torch_training
+#cgo nocallback torch_inference
+#cgo nocallback torch_model_output_size
+#cgo nocallback torch_model_input_size
 */
 import "C"
 
 import (
     "unsafe"
 
+    "os"
     "fmt"
     "math/rand"
     "sync"
+    "strconv"
     "time"
 )
 
 // Go Bindings to C functions in test_cnn.cpp
 // {
-func InitializeModel() *C.struct_CNN {
-    return C.torch_initialize_model()
+func InitializeModelWithOpts (model string, options string) *C.struct_CNN {
+    cModel := C.CString(model)
+    cOpts := C.CString(options)
+    defer C.free(unsafe.Pointer(cModel))
+    defer C.free(unsafe.Pointer(cOpts))
+    return C.torch_initialize_model(cModel, cOpts)
+}
+
+func InitializeModel(model string) *C.struct_CNN {
+    return InitializeModelWithOpts(model, "")
 }
 
 func DeleteModel(model *C.struct_CNN) {
@@ -47,7 +68,7 @@ type InferenceInput struct {
     Callback chan<- []float32
 }
 
-func InferenceAggregator(model *C.struct_CNN, aggregatorChannel <-chan InferenceInput, batchSize int) {
+func InferenceAggregator(model *C.struct_CNN, aggregatorChannel <-chan InferenceInput, batchSize int, timeoutMs time.Duration) {
     outputSize   := int(C.torch_model_output_size(model))
     inputSize    := int(C.torch_model_input_size(model))
     batchData    := make([]float32, 0, batchSize * inputSize)
@@ -60,7 +81,7 @@ func InferenceAggregator(model *C.struct_CNN, aggregatorChannel <-chan Inference
             case request := <- aggregatorChannel:
                 batchData = append(batchData, request.Data...)
                 batchChan = append(batchChan, request.Callback)
-            case <-time.After(1 * time.Second):
+            case <-time.After(timeoutMs * time.Millisecond):
 	        timeout = true
                 fmt.Printf(`O`)
         }
@@ -79,12 +100,12 @@ func InferenceAggregator(model *C.struct_CNN, aggregatorChannel <-chan Inference
     }
 }
 
-func simGenerateRandomData(id int, aggregatorChannel chan<- InferenceInput, dataSize int, wg *sync.WaitGroup) {
+func simGenerateRandomData(id int, aggregatorChannel chan<- InferenceInput, numRequests int, dataSize int, wg *sync.WaitGroup) {
     callback := make(chan []float32, 1)
     defer close(callback)
     defer wg.Done()
 
-    for range 4 {
+    for range numRequests {
         data := make([]float32, dataSize)
         for i := 0; i < dataSize; i++ {
             data[i] = rand.Float32()
@@ -98,47 +119,82 @@ func simGenerateRandomData(id int, aggregatorChannel chan<- InferenceInput, data
                 } else {
                     fmt.Print(`|`)
                 }
-            case <-time.After(2 * time.Second):
+            case <-time.After(5 * time.Second):
                 fmt.Print(`?`)
+                return
         }
     }
     fmt.Print(`.`)
 }
 
 func main() {
-    model := InitializeModel()
+    batchSize := 100
+    numSenders := 2*batchSize
+    numRequests := 5 // # request per sender
+    timeoutMs := 500 // # Aggregator sends partial batch after waiting that many  ms
+
+    if len(os.Args)>1 {
+        switch os.Args[1] {
+            case "-h", "--help", "help":
+                fmt.Println("usage: batchSize numSenders requestsPerSender [timeoutMs]")
+                return
+            default:
+                atoi := func (s string) int {
+                     if i, err := strconv.Atoi(s); err == nil {
+                         return i
+                     } else {
+                         panic(fmt.Sprintf("error: expected int, got '%v'\n", s))
+                     }
+                }
+                if len(os.Args) > 3 {
+                    batchSize = atoi(os.Args[1])
+                    numSenders = atoi(os.Args[2])
+                    numRequests = atoi(os.Args[3])
+                }
+                if len(os.Args) > 4 {
+                    timeoutMs = atoi(os.Args[4])
+                }
+        }
+    }
+
+    model := InitializeModel("CNN_Mnist")
     defer DeleteModel(model)
+    if model == nil {
+        fmt.Println("No model")
+        return
+    }
 
     inputSize := int(C.torch_model_input_size(model))
+    aggregatorQueueSize := numSenders
 
-    num := 100
-    fmt.Printf("Request aggregator, batch size %v x {%v}, receives from %v random data generator goroutines\n\n", num, inputSize, 2*num)
+    fmt.Printf("Request aggregator, batch size: %v, input size: %v (tot: %v)\n", batchSize, inputSize, batchSize * inputSize)
+    fmt.Printf("Receives requests from %v random data generator goroutines, %v requests each\n\n", numSenders, numRequests)
 
-    data := make([]float32, num * inputSize)
-    target := make([]int, num)
+    data := make([]float32, batchSize * inputSize)
+    target := make([]int, batchSize)
     TrainModel(model, data, target, 2)
 
-    aggregatorChannel := make(chan InferenceInput, num)
+    aggregatorChannel := make(chan InferenceInput, aggregatorQueueSize)
     defer close(aggregatorChannel)
 
-    go InferenceAggregator(model, aggregatorChannel, num)
+    go InferenceAggregator(model, aggregatorChannel, batchSize, time.Duration(timeoutMs))
 
     var wg sync.WaitGroup
-    wg.Add(2*num)
+    wg.Add(numSenders)
 
-    fmt.Println(`>>>>>>>>>> codes <<<<<<<<<<`)
-    fmt.Println(`:   A goroutine sent a request to request aggregator`)
-    fmt.Println(`*   Request aggregator sent a batch of requests for inference`)
-    fmt.Println(`+   Request aggregator received a batch of results and dispatched them to goroutines`)
+    fmt.Println(`>>>>>>>>>> events <<<<<<<<<<`)
+    fmt.Println(`:   A goroutine sent a request to the request aggregator`)
+    fmt.Println(`*   The request aggregator forwards a batch of requests for inference on the model`)
+    fmt.Println(`+   Request aggregator gets a batch of results from the model, and dispatched them to goroutines`)
     fmt.Println(`|   A goroutine received a result`)
     fmt.Println(`O   Request aggregator timed out while waiting for new input (submit partial batch)`)
-    fmt.Println(`?   A goroutine timed out while waiting for the result`)
-    fmt.Println(`.   A goroutine terminated`)
+    fmt.Println(`?   A goroutine timed-out and terminated while waiting for the result`)
+    fmt.Println(`.   A goroutine gracefuly terminated after sending its requests and receiving all the responses.`)
     fmt.Println(`$   End`)
     fmt.Print("\n\n")
 
-    for k := range 2*num {
-        go simGenerateRandomData(k, aggregatorChannel, inputSize, &wg)
+    for k := range numSenders {
+        go simGenerateRandomData(k, aggregatorChannel, numRequests, inputSize, &wg)
     }
 
     wg.Wait()

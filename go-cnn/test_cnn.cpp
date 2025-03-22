@@ -3,11 +3,34 @@
 #include <iostream>
 #include <array>
 #include <memory>
+#include <numeric>
 #include "test_cnn.h"
 
-// CNN Model for MNIST data
+// CNN Model Abstraction
 struct CNN : torch::nn::Module {
-    CNN(torch::Device const& device, bool verbose = false) : device(device), verbose(verbose) {
+    using shape_t = at::IntArrayRef ;
+
+    CNN(torch::Device const device) : device(device) {}
+    virtual ~CNN() {}
+
+    virtual torch::Tensor forward(torch::Tensor x) = 0 ;
+    virtual const shape_t input_shape() const = 0 ;
+    virtual const shape_t output_shape() const = 0 ;
+
+    virtual const size_t input_size() const {
+        return [](shape_t s) { return std::accumulate(s.begin(), s.end(), 1, std::multiplies()); }(input_shape());
+    }
+
+    virtual const size_t output_size() const {
+        return [](auto s) { return std::accumulate(s.begin(), s.end(), 1, std::multiplies()); }(output_shape());
+    }
+
+    torch::Device const device;
+};
+
+// CNN Model for MNIST data
+struct CNN_Mnist : CNN {
+    CNN_Mnist(torch::Device const device) : CNN{device} {
         conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 32, 5).stride(1).padding(2)));
         conv2 = register_module("conv2", torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 64, 5).stride(1).padding(2)));
         fc1 = register_module("fc1", torch::nn::Linear(64 * 7 * 7, 1000));
@@ -25,16 +48,50 @@ struct CNN : torch::nn::Module {
         return torch::log_softmax(x, 1);
     }
 
+    const shape_t input_shape() const {
+        return i_shape ;
+    }
+
+    const shape_t output_shape() const {
+        return o_shape ;
+    }
+
     torch::nn::Conv2d conv1{nullptr}, conv2{nullptr};
     torch::nn::Linear fc1{nullptr}, fc2{nullptr};
-    const torch::Device device;
-    const size_t input_size{1*28*28};
-    const size_t output_size{10};
-    const std::array<long, 3> shape{1,28,28};
-    bool verbose{false};
+    const std::array<shape_t::value_type,3> i_shape{1,28,28};
+    const shape_t::value_type o_shape{10};
 };
 
-extern "C" CNN* torch_initialize_model() {
+// Model Facotry
+struct ModelFactory {
+    using ModelConstructor = std::function<CNN*(torch::Device, std::string_view)>;
+
+    ModelFactory() {
+        registerModel("CNN_Mnist", [](torch::Device device, std::string_view opt) { return new CNN_Mnist(device); });
+    }
+
+    void registerModel(std::string&& name, ModelConstructor cnstr) {
+        registry()[name] = cnstr ;
+    }
+
+    CNN* createModel(const std::string& model, torch::Device device, std::string opt) {
+        auto it = registry().find(model);
+        if (it != registry().end()) {
+            return it->second(device, opt);
+        }
+        std::cerr << "Model not found - " << model << std::endl;
+        return nullptr;  
+    }
+
+    static std::unordered_map<std::string, ModelConstructor>& registry() {
+        static std::unordered_map<std::string, ModelConstructor> registry_;
+        return registry_;
+    }
+};
+
+extern "C" CNN* torch_initialize_model(char const* model, char const* options) {
+    static ModelFactory factory ;
+
     try {
         torch::Device device{torch::kCPU};
         if (torch::cuda::is_available()) {
@@ -47,26 +104,23 @@ extern "C" CNN* torch_initialize_model() {
             std::cout << "Using CPU" << std::endl;
         }
 
-        return new CNN(device);
+        return factory.createModel(model, device, std::string{options});
     } catch (const std::exception& e) {
-	std::cerr << "Caught " << e.what() << std::endl ;
+	std::cerr << "Exception - " << e.what() << std::endl ;
 	return nullptr;
     }
 }
 
 extern "C" size_t torch_model_output_size(CNN const* model) {
-    return model->output_size ;
+    return model->output_size();
 }
 
 extern "C" size_t torch_model_input_size(CNN const* model) {
-    return model->input_size ;
+    return model->input_size();
 }
 
 // Function to delete the model
 extern "C" void torch_delete_model(CNN* model) {
-    if (model->verbose) {
-        std::cout << "Delete model, " << model << std::endl;
-    }
     delete model;
 }
 
@@ -74,15 +128,15 @@ extern "C" void torch_delete_model(CNN* model) {
 // Initialize model on the correct device
 extern "C" void torch_training(CNN* model, float* data, int * target, size_t data_size, int num_epochs) {
     try {
-	size_t batch_size = data_size / model->input_size ;
-	if (batch_size * model->input_size != data_size) {
-            std::cerr << "Input size does is not a multiple of " << model->input_size << std::endl;
+	size_t batch_size = data_size / model->input_size() ;
+	if (batch_size * model->input_size() != data_size) {
+            std::cerr << "Input size is not a multiple of " << model->input_size() << std::endl;
 	    return ;
 	}
 
-	std::vector<long> shape;
-	shape.push_back(static_cast<long>(batch_size));
-	shape.insert(shape.end(), model->shape.begin(), model->shape.end());
+	std::vector<at::IntArrayRef::value_type> shape;
+	shape.push_back(static_cast<at::IntArrayRef::value_type>(batch_size));
+	shape.insert(shape.end(), model->input_shape().begin(), model->input_shape().end());
 
         torch::Tensor data_tensor = torch::from_blob(data, shape, torch::kFloat).to(model->device);
         torch::Tensor target_tensor = torch::from_blob(target, {static_cast<long>(batch_size)}, torch::kInt64).to(model->device);
@@ -105,7 +159,7 @@ extern "C" void torch_training(CNN* model, float* data, int * target, size_t dat
             //std::cout << "Epoch [" << epoch + 1 << "/" << num_epochs << "] Loss: " << loss.item<float>() << std::endl;
         }
     } catch (const std::exception& e) {
-	std::cerr << "Caught " << e.what() << std::endl ;
+	std::cerr << "Exception - " << e.what() << std::endl ;
     }
 }
 
@@ -115,15 +169,15 @@ extern "C" void torch_training(CNN* model, float* data, int * target, size_t dat
 extern "C" size_t torch_inference(CNN* model, float* data, size_t data_size, float* result_buffer, size_t buffer_size) {
     try {
         c10::InferenceMode guard;
-	size_t batch_size = data_size / model->input_size ;
-	if (batch_size * model->input_size != data_size) {
-            std::cerr << "Input size does is not a multiple of " << model->input_size << std::endl;
+	size_t batch_size = data_size / model->input_size() ;
+	if (batch_size * model->input_size() != data_size) {
+            std::cerr << "Input size is not a multiple of " << model->input_size() << std::endl;
 	    return 0;
 	}
 
-	std::vector<long> shape;
-	shape.push_back(static_cast<long>(batch_size));
-	shape.insert(shape.end(), model->shape.begin(), model->shape.end());
+	std::vector<at::IntArrayRef::value_type> shape;
+	shape.push_back(static_cast<at::IntArrayRef::value_type>(batch_size));
+	shape.insert(shape.end(), model->input_shape().begin(), model->input_shape().end());
 
         torch::Tensor data_tensor = torch::from_blob(data, shape, torch::kFloat).to(model->device);
         model->eval();
@@ -143,7 +197,7 @@ extern "C" size_t torch_inference(CNN* model, float* data, size_t data_size, flo
 
         return result_size;
     } catch (const std::exception& e) {
-	std::cerr << "Caught " << e.what() << std::endl ;
+	std::cerr << "Exception - " << e.what() << std::endl ;
 	return 0;
     }
 }
