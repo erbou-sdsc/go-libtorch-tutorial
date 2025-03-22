@@ -1,6 +1,7 @@
 #include <torch/torch.h>
 #include <iostream>
 #include <memory>
+#include <cstdlib>
 
 // Define the CNN model
 struct CNN : torch::nn::Module {
@@ -24,7 +25,7 @@ struct CNN : torch::nn::Module {
     torch::nn::Linear fc1{nullptr}, fc2{nullptr};
 };
 
-int main() {
+int main(int argc, char const **argv) {
     torch::Device device(torch::kCPU);
     if (torch::mps::is_available()) {
         device = torch::Device(torch::kMPS);
@@ -45,6 +46,16 @@ int main() {
     }
 
     int batch_size{64};
+
+    if (argc > 1) {
+        auto bsz = std::atoi(argv[1]);
+        if (bsz < 64 || bsz > 1000) {
+            std::cout << "Ignore batch size parameter " << bsz << std::endl;
+        } else {
+            batch_size = bsz ;
+            std::cout << "Use batch size " << batch_size << std::endl;
+        }
+    }
 
     // Load the MNIST dataset, it must be saved into data
     // train-images-idx3-ubyte  train-labels-idx1-ubyte

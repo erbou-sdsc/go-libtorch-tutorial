@@ -8,8 +8,6 @@ else
 	ABI:=
 endif
 
-export LD_LIBRARY_PATH:=/usr/local/cuda:$(LIBTORCH)/lib:$(LD_LIBRARY_PATH):$(PWD)
-
 CFLAGS=-I$(LIBTORCH)/include/ -I$(LIBTORCH)/include/torch/csrc/api/include/ -O3
 CPPFLAGS=-std=c++17 $(CFLAGS) $(ABI) -fPIC
 LDFLAGS=-L/usr/local/cuda/lib64 -L$(LIBTORCH)/lib -ltorch -pthread -ltorch_cpu -lc10 -Wl,-rpath,$(LIBTORCH)/lib,-rpath,$(abspath .)
@@ -22,4 +20,4 @@ lib%.so: %.o
 	$(CXX) $(CPPFLAGS) -std=c++17 -O3 -shared -o $(@) $(^) $(LDFLAGS)
 
 clean:
-	rm -f main libtest_cnn.so test_cnn.o
+	rm -f main libtest_cnn.dylib libtest_cnn.so test_cnn.o
