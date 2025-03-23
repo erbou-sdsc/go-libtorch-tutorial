@@ -166,7 +166,7 @@ The example in the _cnn_ folder test the availability of the CNN deep learning l
 
 The model is a convolutional neural network with two 2D convolutional layers, each followed by a ReLU activation and max pooling, and then fully connected layers for classification, ending with a softmax activation for multi-class output.
 
-The model and data are moved to the GPU (if available) in batches (e.g., 64 in the code) to leverage parallel computation during both training and testing. The batch size is tunable to optimize performance.
+The model and data are moved to the GPU (if available) in batches (e.g., 64 in the code) to leverage parallel computation during both training and testing. The batch size is tunable (optional command line argument) to optimize performance.
 
 ##### CMake
 
@@ -177,7 +177,7 @@ cd build
 ln -s ../data .
 cmake ..
 make
-./test_cnn
+./test_cnn [batch_size]
 ```
 
 ##### Make
@@ -185,12 +185,16 @@ make
 ```
 cd cnn
 make
-./test_cnn
+./test_cnn [batch_size]
 ```
 
 ### Test the Go-C++ binding for CNN
 
-This example demonstrates the same CNN model in a system that leverages a Go-C++ integration to maximize GPU utilization by preventing GPU starvation. Multiple goroutines request inferences on a go channel, which are aggregated by the Inference Aggregator goroutine. Once a batch is ready, it is passed to the C++ API, which offloads the computation to the GPU for fast processing. The results are then desaggregated and sent back to the respective goroutines via callback channels. The following diagram illustrates the sequence of operations in the system:
+This example demonstrates the same convolutional neural network (CNN) model in a system that integrates Go and C++ to optimize GPU utilization and prevent GPU starvation. Multiple goroutines submit inference requests via a Go channel, which are collected by the Inference Aggregator goroutine. Once the batch is either ready or the timeout is exceeded while waiting for additional requests, it is forwarded to the C++ API. The C++ layer offloads the computation to the GPU. After the GPU computation is complete, the results are desaggregated and sent back to the corresponding goroutines through callback channels.
+
+The system’s performance can be tuned through optional CLI arguments, which allow adjustment of factors such as batch size, the number of sender goroutines, and the number of requests per sender.
+
+The following diagram illustrates the sequence of operations in the system:
 
 ```mermaid
 sequenceDiagram
@@ -232,7 +236,7 @@ cd build
 cmake ..
 make
 cd ..
-./test_cnn
+LD_LIBRARY_PATH=. ./main [batchSize numSenders requestsPerSender [batchTimeoutMs]]
 ```
 
 ##### Make
@@ -240,14 +244,14 @@ cd ..
 ```
 cd go-cnn
 make
-./test_cnn
+LD_LIBRARY_PATH=. ./main [batchSize numSenders requestsPerSender [batchTimeoutMs]]
 ```
 
 ### TODO
 
 Several improvements can be made to the Go-C++ integration.
 
-* Currently, the code is hardcoded for a specific convolutional neural network model tailored for MNIST data.
-Ideally, it should implement a C++ model factory with a dlloader to enable the dynamic instantiation of models by name, with the possibility of including optional configuration parameters.
+* Currently, the code implements a C++ model factory, hardcoded for a specific convolutional neural network model tailored for MNIST data.
+Ideally, it should implement a dlloader to enable the dynamic instantiation of models by name, with the possibility of including optional configuration parameters.
 * While some effort has been made to support tensors of various shapes, the current C++ interface is designed to support a limited set of model architectures, and may not be well-suited for more complex models like GraphNet.
 
