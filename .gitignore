@@ -11,3 +11,4 @@ build
 .nfs*
 pkgs
 *-ubyte
+mnist_read
