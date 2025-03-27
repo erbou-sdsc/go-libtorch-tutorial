@@ -190,7 +190,7 @@ make
 
 ### Test the Go-C++ binding for CNN
 
-This example demonstrates the same convolutional neural network (CNN) model in a system that integrates Go and C++ to optimize GPU utilization and prevent GPU starvation. Multiple goroutines submit inference requests via a Go channel, which are collected by the Inference Aggregator goroutine. Once the batch is either ready or the timeout is exceeded while waiting for additional requests, it is forwarded to the C++ API. The C++ layer offloads the computation to the GPU. After the GPU computation is complete, the results are desaggregated and sent back to the corresponding goroutines through callback channels.
+This example demonstrates the same convolutional neural network (CNN) model in a system that integrates Go and C++ to optimize GPU utilization and prevent GPU starvation. Multiple goroutines submit inference requests, along with a pointer to their respective callback channel, through a buffered Go channel. These requests are then aggregated into a batch by the Inference Aggregator goroutine. Once the batch is either ready or a timeout is reached while waiting for additional requests, it is forwarded to the C++ API. The C++ layer offloads the computation to the GPU. After the GPU computation is complete, the results are desaggregated and sent back to the corresponding goroutines through callback channels.
 
 The system’s performance can be tuned through optional CLI arguments, which allow adjustment of factors such as batch size, the number of sender goroutines, and the number of requests per sender.
 
@@ -201,13 +201,13 @@ sequenceDiagram
     participant T1 as Goroutine 1<br/>Inference Requester
     participant T2 as Goroutine n<br/>Inference Requester
     participant A as Goroutine<br/>Inference<br/>Aggregator
-    participant C as C++ API
+    participant C as GO/C++ API
     participant G as GPU
     autonumber
     par
-      T1->>A: Send inference request (x_1, callback_1)
+      T1-)A: Async: Send inference request (x_1, callback_1)
     and
-      T2->>A: Send inference request (x_2, callback_2)
+      T2-)A: Async: Send inference request (x_2, callback_2)
     end
     loop Aggregate
         A->>A: Batch (x_i) from goroutines into<br/>flat float array until batch size<br/>is reached or timeout occurs<br/>waiting for more x_i
@@ -217,15 +217,15 @@ sequenceDiagram
     C->>G: Convert batch to tensor on GPU and<br/>execute inference
     activate G
     Note right of G: GPU runs inference<br/>independently of tensor size<br/> within a fixed time
-    G-->>C: Return tensor of results
+    G--)C: Return tensor of results
     deactivate G
-    C-->>A: Return flat batch of results
+    C--)A: Return flat batch of results
     deactivate C
     loop Desaggregate
         A->>A: Split batch into individual results<br/>r_i and send to respective<br/>callback channels
     end
-    A-->>T1: callback_1(r_1)
-    A-->>T2: callback_2(r_n)
+    A--)T1: callback_1(r_1)
+    A--)T2: callback_2(r_n)
 ```
 
 ##### CMake
