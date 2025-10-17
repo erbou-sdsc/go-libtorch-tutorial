@@ -4,9 +4,12 @@
 ## Linux setup file
 ## It is meant to be run on a stock Ubuntu LTS 24.04, with nvidia A100 and CUDA 12.2 drivers.
 
-GO_URL=${GO_URL-https://go.dev/dl/go1.24.1.linux-amd64.tar.gz}
-LIBTORCH_URL=${LIBTORCH_URL-https://download.pytorch.org/libtorch/cu124/libtorch-cxx11-abi-shared-with-deps-2.6.0%2Bcu124.zip}
-CUDA_TKT_URL=${CUDA_TKT_URL-https://developer.download.nvidia.com/compute/cuda/12.2.2/local_installers/cuda_12.2.2_535.104.05_linux.run}
+#GO_URL=${GO_URL-https://go.dev/dl/go1.24.1.linux-amd64.tar.gz}
+GO_URL=${GO_URL-https://go.dev/dl/go1.25.3.linux-amd64.tar.gz}
+#LIBTORCH_URL=${LIBTORCH_URL-https://download.pytorch.org/libtorch/cu124/libtorch-cxx11-abi-shared-with-deps-2.6.0%2Bcu124.zip}
+LIBTORCH_URL=${LIBTORCH_URL-https://download.pytorch.org/libtorch/cu130/libtorch-shared-with-deps-2.9.0%2Bcu130.zip}
+#CUDA_TKT_URL=${CUDA_TKT_URL-https://developer.download.nvidia.com/compute/cuda/12.2.2/local_installers/cuda_12.2.2_535.104.05_linux.run}
+CUDA_TKT_URL=${CUDA_TKT_URL-https://developer.download.nvidia.com/compute/cuda/13.0.2/local_installers/cuda_13.0.2_580.95.05_linux.run}
 LIBTORCH_HOME=/usr/local/libtorch
 
 _install() {
@@ -31,13 +34,17 @@ _install() {
     if ! command -v g++ || ! command -v wget || ! command -v unzip || ! command -v cmake; then
         export DEBIAN_FRONTEND=noninteractive
         apt update
-        apt install -y wget g++-12 build-essential git libxml2 unzip vim tmux cmake python3.12 python3.12-venv
+        apt install -y software-properties-common
+        add-apt-repository -y ppa:deadsnakes/ppa
+        apt install -y wget g++-12 build-essential git libxml2 unzip vim tmux cmake python3.13 python3.13-venv
+        apt update -y
+        apt upgrade -y
         apt -y autoremove
         apt -y clean
         for i in /bin/gcc*-12 /bin/g++*-12; do ln -fs $i ${i/-12/}; done
         ln -fs /bin/gcc /bin/cc
         ln -fs /bin/g++ /bin/c++
-        ln -fs /usr/bin/python3.12 /usr/bin/python3
+        ln -fs /usr/bin/python3.13 /usr/bin/python3
     fi
 
     nvidia-smi

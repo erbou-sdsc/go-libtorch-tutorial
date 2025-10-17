@@ -1,6 +1,6 @@
 main() {
-    if [[ ! -d ./venv ]]; then
-        python3 -m venv venv || return 1
+    if [[ ! -d ./venv || ! -e ./venv/bin/activate ]]; then
+        python3.13 -m venv venv || return 1
         . ./venv/bin/activate
         pip3 install --upgrade pip
         pip3 install torch numpy
